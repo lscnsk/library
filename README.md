@@ -1,11 +1,39 @@
-<div align="center">
+# lscnsk / library
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Минималистичный каталог цифровой библиотеки [lscnsk/lscnsk_library](https://github.com/lscnsk/lscnsk_library) в читалочном дизайне.
 
-  <h1>Built with AI Studio</h2>
+## Особенности
+- Прямая интеграция с репозиторием `lscnsk_library`.
+- Автоматический парсинг метаданных FB2 (обложки, авторы, серии, аннотации).
+- Прямое скачивание книг на устройство пользователя.
+- Поддержка как локального запуска / Vercel, так и статического хостинга на **GitHub Pages**.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+---
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## 🚀 Как развернуть на GitHub Pages
 
-</div>
+1. **Загрузите репозиторий на GitHub**:
+   - Создайте репозиторий на GitHub (например, `lscnsk.github.io` или `library`).
+   - Отправьте в него этот код (`git push origin main`).
+
+2. **Включите GitHub Pages**:
+   - Перейдите в **Settings** репозитория на GitHub.
+   - В левом меню выберите **Pages**.
+   - В разделе **Build and deployment** -> **Source** выберите **GitHub Actions**.
+
+3. **Готово!**
+   - GitHub Actions автоматически запустит воркфлоу `.github/workflows/deploy.yml`, соберёт статический сайт и опубликует его по адресу `https://<ваш_логин>.github.io/<название_репозитория>/`.
+
+---
+
+## 💻 Локальная разработка
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск сервера разработки
+npm run dev
+```
+
+Откройте [http://localhost:3000](http://localhost:3000) в браузере.

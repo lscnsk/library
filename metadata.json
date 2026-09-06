@@ -1,0 +1,6 @@
+{
+  "name": "lscnsk/library",
+  "description": "Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки Cool_Read",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

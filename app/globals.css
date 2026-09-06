@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: var(--font-literata), Literata, Georgia, serif;
+    background-color: #23211f;
+    color: #fffff0;
+    overflow-x: hidden;
+  }
+
+  .font-literata {
+    font-family: var(--font-literata), Literata, Georgia, serif;
+  }
+}
+
+/* Custom subtle scrollbar matching Cool_Read */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #23211f;
+}
+::-webkit-scrollbar-thumb {
+  background: #3d3936;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #544f4b;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Book spine 3D effect in Cool_Read style */
+.book-shadow {
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 10px 24px -4px rgba(0, 0, 0, 0.4);
+}
+.book-spine-effect {
+  position: relative;
+}
+.book-spine-effect::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 10px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 10;
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+}
+

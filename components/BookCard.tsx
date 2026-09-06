@@ -40,66 +40,51 @@ export function BookCard({ book, onSelect }: BookCardProps) {
     setIsDownloading(true);
 
     try {
-      const targetUrl = book.rawUrl || book.downloadUrl || book.cdnUrl || '';
-      const apiUrl = `/api/download?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent(book.filename)}`;
+      const targetUrls = [
+        book.cdnUrl,
+        book.rawUrl,
+        book.downloadUrl
+      ].filter(Boolean) as string[];
 
-      // Fetch blob to trigger direct device download with proper filename
-      const res = await fetch(apiUrl);
-      if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`);
-      }
+      let downloaded = false;
 
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = blobUrl;
-      a.download = book.filename;
-      document.body.appendChild(a);
-      a.click();
+      for (const url of targetUrls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = book.filename;
+            document.body.appendChild(a);
+            a.click();
 
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(blobUrl);
-      }, 1000);
-    } catch (err) {
-      console.warn('API route download not available, fetching directly via CDN:', err);
-      try {
-        // Direct jsDelivr CDN fetch (supports CORS for browser blob downloads on GitHub Pages)
-        const cdnUrl =
-          book.cdnUrl ||
-          `https://cdn.jsdelivr.net/gh/lscnsk/lscnsk_library@main/${encodeURIComponent(book.path || book.filename)}`;
-        const res = await fetch(cdnUrl);
-        if (res.ok) {
-          const blob = await res.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.style.display = 'none';
-          a.href = blobUrl;
-          a.download = book.filename;
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
-          }, 1000);
-          return;
+            setTimeout(() => {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(blobUrl);
+            }, 1000);
+            downloaded = true;
+            break;
+          }
+        } catch {
+          // try next URL
         }
-      } catch (cdnErr) {
-        console.warn('CDN download error:', cdnErr);
       }
 
-      // Final fallback: direct link trigger
-      const directUrl = book.downloadUrl || book.rawUrl || book.cdnUrl || '';
-      const a = document.createElement('a');
-      a.href = directUrl;
-      a.download = book.filename;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 1000);
+      if (!downloaded) {
+        const directUrl = book.downloadUrl || book.rawUrl || book.cdnUrl || '';
+        const a = document.createElement('a');
+        a.href = directUrl;
+        a.download = book.filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+        }, 1000);
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -108,10 +93,10 @@ export function BookCard({ book, onSelect }: BookCardProps) {
   return (
     <article
       id={`book-article-${book.id}`}
-      className="transition-all grid grid-cols-1 sm:grid-cols-[198px_1fr] md:grid-cols-[198px_1fr] lg:grid-cols-[198px_1fr] gap-4 sm:gap-6 md:gap-8 items-start select-none"
+      className="transition-all grid grid-cols-1 sm:grid-cols-[180px_1fr] md:grid-cols-[180px_1fr] lg:grid-cols-[180px_1fr] gap-4 sm:gap-6 md:gap-8 items-start select-none"
     >
       {/* Left Column: Cover & Download Button & Format/Size line */}
-      <div className="w-full max-w-[198px] mx-auto sm:mx-0 flex flex-col items-center sm:items-start">
+      <div className="w-[180px] max-w-full mx-auto sm:mx-0 flex flex-col items-center sm:items-start shrink-0">
         {/* Cover box - identical dimensions and styling to catalog grid covers */}
         <div
           onClick={() => onSelect && onSelect(book)}

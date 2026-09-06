@@ -32,44 +32,48 @@ export function extractFB2Metadata(xmlText: string): ParsedMetadata {
   let language = '';
   const genres: string[] = [];
 
-  // Extract <description> block
-  const descMatch = xmlText.match(/<description>([\s\S]*?)<\/description>/i);
-  const descBlock = descMatch ? descMatch[1] : xmlText.slice(0, 20000);
+  // Extract <description> block (or title-info if description tag is omitted)
+  const descMatch = xmlText.match(/<description>([\s\S]*?)<\/description>/i) ||
+                    xmlText.match(/<title-info>([\s\S]*?)<\/title-info>/i);
+  const descBlock = descMatch ? descMatch[1] : xmlText.slice(0, 40000);
 
   // 1. Title
-  const titleMatch = descBlock.match(/<book-title>([\s\S]*?)<\/book-title>/i);
+  const titleMatch = descBlock.match(/<book-title[^>]*>([\s\S]*?)<\/book-title>/i);
   if (titleMatch) {
     title = cleanXmlText(titleMatch[1]);
   }
 
-  // 2. Author
-  const authorMatch = descBlock.match(/<author>([\s\S]*?)<\/author>/i);
-  if (authorMatch) {
-    const authorBlock = authorMatch[1];
-    const first = cleanXmlText(authorBlock.match(/<first-name>([\s\S]*?)<\/first-name>/i)?.[1] || '');
-    const middle = cleanXmlText(authorBlock.match(/<middle-name>([\s\S]*?)<\/middle-name>/i)?.[1] || '');
-    const last = cleanXmlText(authorBlock.match(/<last-name>([\s\S]*?)<\/last-name>/i)?.[1] || '');
-    const nick = cleanXmlText(authorBlock.match(/<nickname>([\s\S]*?)<\/nickname>/i)?.[1] || '');
+  // 2. Author(s)
+  const authorMatches = [...descBlock.matchAll(/<author[^>]*>([\s\S]*?)<\/author>/gi)];
+  const authorsList: string[] = [];
+  for (const am of authorMatches) {
+    const authorBlock = am[1];
+    const first = cleanXmlText(authorBlock.match(/<first-name[^>]*>([\s\S]*?)<\/first-name>/i)?.[1] || '');
+    const middle = cleanXmlText(authorBlock.match(/<middle-name[^>]*>([\s\S]*?)<\/middle-name>/i)?.[1] || '');
+    const last = cleanXmlText(authorBlock.match(/<last-name[^>]*>([\s\S]*?)<\/last-name>/i)?.[1] || '');
+    const nick = cleanXmlText(authorBlock.match(/<nickname[^>]*>([\s\S]*?)<\/nickname>/i)?.[1] || '');
 
-    authorLastName = last;
-    if (first || last) {
-      author = [first, middle, last].filter(Boolean).join(' ').trim();
-    } else if (nick) {
-      author = nick;
+    if (last && !authorLastName) authorLastName = last;
+    const full = [first, middle, last].filter(Boolean).join(' ').trim() || nick;
+    if (full && !authorsList.includes(full)) {
+      authorsList.push(full);
     }
   }
+  author = authorsList.join(', ');
 
   // 3. Series / Sequence
-  const seqMatch = descBlock.match(/<sequence[^>]*name="([^"]+)"(?:\s*number="([^"]*)")?/i);
+  const seqMatch =
+    descBlock.match(/<sequence[^>]*name=[\"']([^\"']+)[\"'](?:\s*number=[\"']([^\"']*)[\"'])?/i) ||
+    descBlock.match(/<sequence[^>]*number=[\"']([^\"']*)[\"'](?:\s*name=[\"']([^\"']+)[\"'])?/i);
   if (seqMatch) {
-    series = seqMatch[1].trim();
+    series = (seqMatch[1] || '').trim();
     if (seqMatch[2]) {
       seriesNumber = seqMatch[2].trim();
     }
   }
 
   // 4. Genres
-  const genreMatches = [...descBlock.matchAll(/<genre>([\s\S]*?)<\/genre>/gi)];
+  const genreMatches = [...descBlock.matchAll(/<genre[^>]*>([\s\S]*?)<\/genre>/gi)];
   for (const gm of genreMatches) {
     const g = cleanXmlText(gm[1]);
     if (g && !genres.includes(g)) {
@@ -78,9 +82,9 @@ export function extractFB2Metadata(xmlText: string): ParsedMetadata {
   }
 
   // 5. Annotation / Synopsis
-  const annoMatch = descBlock.match(/<annotation>([\s\S]*?)<\/annotation>/i);
+  const annoMatch = descBlock.match(/<annotation[^>]*>([\s\S]*?)<\/annotation>/i);
   if (annoMatch) {
-    const pMatches = [...annoMatch[1].matchAll(/<p>([\s\S]*?)<\/p>/gi)];
+    const pMatches = [...annoMatch[1].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
     if (pMatches.length > 0) {
       annotation = pMatches
         .map(p => cleanXmlText(p[1]))
@@ -98,26 +102,42 @@ export function extractFB2Metadata(xmlText: string): ParsedMetadata {
   }
 
   // 7. Lang
-  const langMatch = descBlock.match(/<lang>([\s\S]*?)<\/lang>/i);
+  const langMatch = descBlock.match(/<lang[^>]*>([\s\S]*?)<\/lang>/i);
   if (langMatch) {
     language = cleanXmlText(langMatch[1]);
   }
 
   // 8. Cover image from <coverpage> and <binary>
-  const coverMatch = descBlock.match(/<coverpage>[\s\S]*?<image[^>]*href="#([^"]+)"/i);
+  // Handles href, l:href, xlink:href with or without #
+  const coverMatch = descBlock.match(/<coverpage>[\s\S]*?<image[^>]*?(?:l:|xlink:)?href=[\"']#?([^\"']+)[\"']/i);
   if (coverMatch) {
-    const imageId = coverMatch[1];
-    // Find binary tag matching this ID
+    const rawImageId = coverMatch[1].replace(/^#/, '');
+    // Search for <binary> matching rawImageId
     const binRegex = new RegExp(
-      `<binary[^>]*id="${imageId}"[^>]*content-type="([^"]+)"[^>]*>([\\s\\S]*?)<\\/binary>`,
-      'i'
+      `<binary[^>]*id=[\"']${rawImageId}[\"'][^>]*>([\\s\\S]*?)<\\/binary>|<binary[^>]*>([\\s\\S]*?)<\\/binary>`,
+      'gi'
     );
-    const binMatch = xmlText.match(binRegex);
-    if (binMatch) {
-      const mime = binMatch[1].trim();
-      const rawBase64 = binMatch[2].replace(/[\r\n\s]/g, '');
-      if (rawBase64.length > 100) {
-        coverUrl = `data:${mime};base64,${rawBase64}`;
+    let binMatch: RegExpExecArray | null;
+    while ((binMatch = binRegex.exec(xmlText)) !== null) {
+      const fullTag = binMatch[0];
+      const content = (binMatch[1] || binMatch[2] || '').replace(/[\r\n\s]/g, '');
+      if (content.length > 50) {
+        const typeMatch = fullTag.match(/content-type=[\"']([^\"']+)[\"']/i);
+        const mime = typeMatch ? typeMatch[1].trim() : 'image/jpeg';
+        coverUrl = `data:${mime};base64,${content}`;
+        break;
+      }
+    }
+  }
+
+  // Fallback: If no cover found via coverpage, check if there is any image binary in the file
+  if (!coverUrl) {
+    const firstBin = xmlText.match(/<binary[^>]*content-type=[\"']image\/([^\"']+)[\"'][^>]*>([\s\S]*?)<\/binary>/i);
+    if (firstBin) {
+      const mime = `image/${firstBin[1].trim()}`;
+      const content = firstBin[2].replace(/[\r\n\s]/g, '');
+      if (content.length > 100) {
+        coverUrl = `data:${mime};base64,${content}`;
       }
     }
   }

@@ -1,4 +1,4 @@
-import { BookMetadata, BookFormat, RepoStatus, BooksResponse } from '@/types/book';
+import { BookMetadata, RepoStatus, BooksResponse } from '@/types/book';
 import { extractFB2Metadata, parseFilenameFallback } from './ebookParser';
 import { formatBytes, estimateReadingTime } from './typography';
 
@@ -17,7 +17,7 @@ interface CacheEntry {
 }
 
 let memoryCache: CacheEntry | null = null;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds auto-revalidate
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds live cache
 
 const BOOK_EXTENSIONS = ['.fb2', '.epub', '.pdf', '.txt', '.mobi', '.cbr', '.cbz'];
 
@@ -38,15 +38,14 @@ export async function getLibraryBooks(forceFresh = false): Promise<BooksResponse
     };
     return freshData;
   } catch (error) {
-    console.error('Failed to fetch from GitHub, attempting cache fallback:', error);
+    console.warn('GitHub library fetch error:', error);
     if (memoryCache) {
       return {
         ...memoryCache.response,
         cached: true
       };
     }
-    // If absolutely nothing cached yet, return graceful fallback
-    return getFallbackLibrary();
+    return getEmptyLibraryResponse();
   }
 }
 
@@ -60,6 +59,7 @@ interface RawFileItem {
   size: number;
   sha?: string;
   download_url?: string;
+  repo?: string;
 }
 
 async function fetchBooksFromGitHub(): Promise<BooksResponse> {
@@ -67,136 +67,121 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   let source: RepoStatus['source'] = 'github-tree';
   let commitInfo: { sha?: string; message?: string; date?: string } = {};
 
-  // Step 1: Fetch latest commit info to display in sync banner
-  try {
-    const commitRes = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits?per_page=1`,
-      {
-        headers: {
-          'User-Agent': 'lscnsk-library-catalog/1.0',
-          Accept: 'application/vnd.github.v3+json'
-        },
-        next: { revalidate: 30 }
-      }
-    );
-    if (commitRes.ok) {
-      const commits = await commitRes.json();
-      if (Array.isArray(commits) && commits.length > 0) {
-        commitInfo = {
-          sha: commits[0].sha?.slice(0, 7),
-          message: commits[0].commit?.message,
-          date: commits[0].commit?.author?.date
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Could not fetch commit info:', e);
-  }
+  // Check the dedicated book repository first, then root repository
+  const reposToSearch = [GITHUB_REPO_NAME, 'library'];
+  let activeRepo = GITHUB_REPO_NAME;
 
-  // Step 2: Fetch full file tree using Git Tree API (recursive)
-  try {
-    const treeRes = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/git/trees/${GITHUB_BRANCH}?recursive=1`,
-      {
-        headers: {
-          'User-Agent': 'lscnsk-library-catalog/1.0',
-          Accept: 'application/vnd.github.v3+json'
-        },
-        next: { revalidate: 30 }
-      }
-    );
-
-    if (treeRes.ok) {
-      const treeData = await treeRes.json();
-      if (Array.isArray(treeData.tree)) {
-        files = treeData.tree
-          .filter((item: any) => item.type === 'blob')
-          .map((item: any) => ({
-            name: item.path.split('/').pop() || item.path,
-            path: item.path,
-            size: item.size || 0,
-            sha: item.sha,
-            download_url: `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/${encodeURIComponent(item.path)}`
-          }));
-        source = 'github-tree';
-      }
-    }
-  } catch (e) {
-    console.warn('GitHub Git Tree API failed:', e);
-  }
-
-  // Step 3: Fallback to GitHub Contents API
-  if (files.length === 0) {
+  for (const currentRepo of reposToSearch) {
+    // 1. Fetch latest commit info
     try {
-      const contentsRes = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents`,
-        {
-          headers: {
-            'User-Agent': 'lscnsk-library-catalog/1.0',
-            Accept: 'application/vnd.github.v3+json'
+      const commitRes = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/commits?per_page=1`
+      );
+      if (commitRes.ok) {
+        const commits = await commitRes.json();
+        if (Array.isArray(commits) && commits.length > 0) {
+          commitInfo = {
+            sha: commits[0].sha?.slice(0, 7),
+            message: commits[0].commit?.message,
+            date: commits[0].commit?.author?.date
+          };
+        }
+      }
+    } catch {
+      // ignore commit fetch error
+    }
+
+    // 2. Fetch full file tree using Git Trees API (recursive)
+    try {
+      const treeRes = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/git/trees/${GITHUB_BRANCH}?recursive=1`
+      );
+
+      if (treeRes.ok) {
+        const treeData = await treeRes.json();
+        if (Array.isArray(treeData.tree)) {
+          const repoFiles: RawFileItem[] = treeData.tree
+            .filter((item: any) => item.type === 'blob')
+            .map((item: any) => ({
+              name: item.path.split('/').pop() || item.path,
+              path: item.path,
+              size: item.size || 0,
+              sha: item.sha,
+              repo: currentRepo,
+              download_url: `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${currentRepo}/${GITHUB_BRANCH}/${encodeURIComponent(item.path)}`
+            }));
+
+          const bookOnly = repoFiles.filter(f => {
+            const lower = f.name.toLowerCase();
+            return BOOK_EXTENSIONS.some(ext => lower.endsWith(ext));
+          });
+
+          if (bookOnly.length > 0) {
+            files = bookOnly;
+            source = 'github-tree';
+            activeRepo = currentRepo;
+            break;
           }
         }
-      );
-      if (contentsRes.ok) {
-        const contents = await contentsRes.json();
-        if (Array.isArray(contents)) {
-          files = contents
-            .filter((c: any) => c.type === 'file')
-            .map((c: any) => ({
-              name: c.name,
-              path: c.path,
-              size: c.size || 0,
-              sha: c.sha,
-              download_url: c.download_url
-            }));
-          source = 'github-api';
-        }
       }
     } catch (e) {
-      console.warn('GitHub Contents API failed:', e);
+      console.warn(`Git Tree API error for ${currentRepo}:`, e);
+    }
+
+    // 3. Fallback: GitHub Contents API
+    if (files.length === 0) {
+      try {
+        const contentsRes = await fetch(
+          `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/contents?t=${Date.now()}`
+        );
+        if (contentsRes.ok) {
+          const contents = await contentsRes.json();
+          if (Array.isArray(contents)) {
+            const repoFiles: RawFileItem[] = contents
+              .filter((c: any) => c.type === 'file')
+              .map((c: any) => ({
+                name: c.name,
+                path: c.path,
+                size: c.size || 0,
+                sha: c.sha,
+                repo: currentRepo,
+                download_url: c.download_url
+              }));
+
+            const bookOnly = repoFiles.filter(f => {
+              const lower = f.name.toLowerCase();
+              return BOOK_EXTENSIONS.some(ext => lower.endsWith(ext));
+            });
+
+            if (bookOnly.length > 0) {
+              files = bookOnly;
+              source = 'github-api';
+              activeRepo = currentRepo;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`GitHub Contents API error for ${currentRepo}:`, e);
+      }
     }
   }
 
-  // Step 4: Fallback to jsDelivr Flat API
-  if (files.length === 0) {
-    try {
-      const jsdRes = await fetch(
-        `https://data.jsdelivr.com/v1/package/gh/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/flat?t=${Date.now()}`
-      );
-      if (jsdRes.ok) {
-        const jsdData = await jsdRes.json();
-        if (Array.isArray(jsdData.files)) {
-          files = jsdData.files.map((f: any) => {
-            const cleanPath = f.name.replace(/^\//, '');
-            return {
-              name: cleanPath.split('/').pop() || cleanPath,
-              path: cleanPath,
-              size: f.size || 0,
-              download_url: `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/${encodeURIComponent(cleanPath)}`
-            };
-          });
-          source = 'jsdelivr';
-        }
-      }
-    } catch (e) {
-      console.warn('jsDelivr flat API failed:', e);
-    }
-  }
-
-  // Filter out non-book files (e.g. README.md, .gitignore, licenses)
+  // Filter book files
   const bookFiles = files.filter(f => {
     const lower = f.name.toLowerCase();
     return BOOK_EXTENSIONS.some(ext => lower.endsWith(ext));
   });
 
-  // Step 5: Parse metadata for each book file in parallel
-  const books: BookMetadata[] = await Promise.all(
-    bookFiles.map(async file => {
+  // Parse metadata for each book file in parallel
+  const parsedBooks = await Promise.all(
+    bookFiles.map(async (file): Promise<BookMetadata | null> => {
+      const repoName = file.repo || activeRepo;
       const rawUrl =
         file.download_url ||
-        `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
-      const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
-      const githubUrl = `${GITHUB_REPO_HTML}/blob/${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
+        `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${repoName}/${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
+      const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO_OWNER}/${repoName}@${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
+      const githubUrl = `https://github.com/${GITHUB_REPO_OWNER}/${repoName}/blob/${GITHUB_BRANCH}/${encodeURIComponent(file.path)}`;
 
       const fallback = parseFilenameFallback(file.name);
       let title = fallback.title;
@@ -212,15 +197,13 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
       let language: string | undefined = undefined;
 
       const isFb2 = file.name.toLowerCase().endsWith('.fb2');
+      let isFileValid = true;
 
       if (isFb2) {
         try {
-          // Fetch the file content
           let contentRes: Response | null = null;
           try {
-            contentRes = await fetch(rawUrl, {
-              headers: { 'User-Agent': 'lscnsk-library/1.0' }
-            });
+            contentRes = await fetch(rawUrl);
           } catch {
             contentRes = null;
           }
@@ -247,10 +230,17 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
             if (meta.coverUrl) coverUrl = meta.coverUrl;
             if (meta.pageCount) pageCount = meta.pageCount;
             if (meta.language) language = meta.language;
+          } else {
+            isFileValid = false;
           }
         } catch (e) {
           console.warn(`Could not extract FB2 metadata for ${file.name}:`, e);
         }
+      }
+
+      if (isFb2 && !isFileValid) {
+        console.warn(`File ${file.name} is inaccessible, skipping.`);
+        return null;
       }
 
       const id = `book-${file.sha || file.name.toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-')}`;
@@ -283,7 +273,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
     })
   );
 
-  // Derive unique genres, authors, series
+  const books = parsedBooks.filter((b): b is BookMetadata => Boolean(b));
+
   const allGenres = Array.from(new Set(books.flatMap(b => b.genres))).sort();
   const allAuthors = Array.from(
     new Set(books.map(b => b.author).filter(a => a && a !== 'Автор не указан'))
@@ -296,10 +287,10 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
 
   const repoStatus: RepoStatus = {
     owner: GITHUB_REPO_OWNER,
-    repo: GITHUB_REPO_NAME,
+    repo: activeRepo,
     branch: GITHUB_BRANCH,
-    htmlUrl: GITHUB_REPO_HTML,
-    uploadUrl: GITHUB_UPLOAD_URL,
+    htmlUrl: `https://github.com/${GITHUB_REPO_OWNER}/${activeRepo}`,
+    uploadUrl: `https://github.com/${GITHUB_REPO_OWNER}/${activeRepo}/upload/${GITHUB_BRANCH}`,
     coolReadUrl: COOL_READ_URL,
     coolReadRepo: COOL_READ_REPO,
     lastSyncedAt: new Date().toISOString(),
@@ -321,32 +312,9 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   };
 }
 
-function getFallbackLibrary(): BooksResponse {
-  const fallbackBook: BookMetadata = {
-    id: 'book-ge-fb2',
-    filename: 'GE.fb2',
-    path: 'GE.fb2',
-    title: 'Пробный камень. Избранное',
-    author: 'Эдит Уортон',
-    authorLastName: 'Уортон',
-    series: 'Позолоченный век',
-    genres: ['Классическая проза'],
-    annotation:
-      'В книгу вошли ранние произведения американской писательницы Эдит Уортон (1862–1937): сборники малой прозы «Сильнейшая склонность» (1899) и «Решающие мгновения» (1901), а также повесть «Пробный камень» (1900).',
-    format: 'fb2',
-    fileSize: 2010716,
-    formattedSize: '1.9 МБ',
-    downloadUrl: `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/GE.fb2`,
-    rawUrl: `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/GE.fb2`,
-    cdnUrl: `https://cdn.jsdelivr.net/gh/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/GE.fb2`,
-    githubUrl: `${GITHUB_REPO_HTML}/blob/${GITHUB_BRANCH}/GE.fb2`,
-    pageCount: 320,
-    estimatedReadingTime: '~6 ч',
-    language: 'ru'
-  };
-
+function getEmptyLibraryResponse(): BooksResponse {
   return {
-    books: [fallbackBook],
+    books: [],
     repo: {
       owner: GITHUB_REPO_OWNER,
       repo: GITHUB_REPO_NAME,
@@ -356,13 +324,13 @@ function getFallbackLibrary(): BooksResponse {
       coolReadUrl: COOL_READ_URL,
       coolReadRepo: COOL_READ_REPO,
       lastSyncedAt: new Date().toISOString(),
-      bookCount: 1,
-      source: 'cache'
+      bookCount: 0,
+      source: 'github-tree'
     },
-    cached: true,
-    totalSizeFormatted: '1.9 МБ',
-    genres: ['Классическая проза'],
-    authors: ['Эдит Уортон'],
-    series: ['Позолоченный век']
+    cached: false,
+    totalSizeFormatted: '0 B',
+    genres: [],
+    authors: [],
+    series: []
   };
 }

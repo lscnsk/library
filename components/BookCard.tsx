@@ -116,14 +116,14 @@ export function BookCard({ book, onSelect }: BookCardProps) {
         <div
           onClick={() => onSelect && onSelect(book)}
           className={`relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md book-shadow ${
-            onSelect ? 'cursor-pointer hover:border-[#dfc894]/50 hover:shadow-2xl transition-all' : ''
+            onSelect ? 'cursor-pointer hover:border-[#dfc894]/40 transition-colors' : ''
           }`}
         >
           {book.coverUrl ? (
             <img
               src={book.coverUrl}
               alt={book.title}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
           ) : (

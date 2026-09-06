@@ -122,11 +122,8 @@ export default function LibraryCatalogPage() {
 
           {/* Loading state */}
           {loading ? (
-            <div className="text-center py-24 space-y-4 font-literata text-[#a8a29e]">
-              <div className="py-8 flex justify-center items-center">
-                <div className="w-8 h-8 border-2 border-t-transparent border-[#dfc894] rounded-full animate-spin" />
-              </div>
-              <p className="text-base">Загрузка каталога lscnsk_library...</p>
+            <div className="text-center py-24 font-literata text-xs tracking-wider text-[#a8a29e] lowercase select-none">
+              loading
             </div>
           ) : books.length === 0 ? (
             /* Empty state matching Cool_Read */
@@ -213,16 +210,16 @@ export default function LibraryCatalogPage() {
                     setSelectedBook(book);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="group cursor-pointer flex flex-col select-none transition-transform duration-200 hover:-translate-y-1"
+                  className="group cursor-pointer flex flex-col select-none"
                   title={`${book.title} — ${book.author}`}
                 >
                   {/* Pure Book Cover Box (No text captions underneath) */}
-                  <div className="relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md group-hover:shadow-2xl group-hover:border-[#dfc894]/50 transition-all book-shadow">
+                  <div className="relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md group-hover:border-[#dfc894]/40 transition-colors book-shadow">
                     {book.coverUrl ? (
                       <img
                         src={book.coverUrl}
                         alt={book.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="absolute inset-0 w-full h-full object-cover"
                         loading="lazy"
                         referrerPolicy="no-referrer"
                       />

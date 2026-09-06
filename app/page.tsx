@@ -14,24 +14,13 @@ export default function LibraryCatalogPage() {
   // Selected book for transformed view
   const [selectedBook, setSelectedBook] = useState<BookMetadata | null>(null);
 
-  // Load books catalog with dual support (API route + static client fallback)
+  // Load books catalog directly (compatible with GitHub Pages static export)
   const fetchLibrary = useCallback(async (isRefresh = false) => {
     try {
-      const res = await fetch(`/api/books${isRefresh ? '?refresh=true' : ''}`);
-      if (res.ok) {
-        const data: BooksResponse = await res.json();
-        setBooks(data.books || []);
-        return;
-      }
-    } catch {
-      // Fallback to direct client fetch for static sites (GitHub Pages)
-    }
-
-    try {
-      const fallbackData = await getLibraryBooks(isRefresh);
-      setBooks(fallbackData.books || []);
+      const data = await getLibraryBooks(isRefresh);
+      setBooks(data.books || []);
     } catch (err) {
-      console.warn('Failed to load books catalog fallback:', err);
+      console.warn('Failed to load books catalog:', err);
     } finally {
       setLoading(false);
     }
@@ -42,20 +31,9 @@ export default function LibraryCatalogPage() {
 
     async function loadInitial() {
       try {
-        const res = await fetch('/api/books');
-        if (res.ok && isSubscribed) {
-          const data: BooksResponse = await res.json();
-          setBooks(data.books || []);
-          return;
-        }
-      } catch {
-        // Continue to client direct fetch
-      }
-
-      try {
-        const fallbackData = await getLibraryBooks(false);
+        const data = await getLibraryBooks(false);
         if (isSubscribed) {
-          setBooks(fallbackData.books || []);
+          setBooks(data.books || []);
         }
       } catch (e) {
         console.warn('Failed to load initial catalog:', e);

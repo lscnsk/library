@@ -2,25 +2,45 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { BookMetadata, BooksResponse } from '@/types/book';
+import { BookMetadata } from '@/types/book';
 import { BookCard } from '@/components/BookCard';
+import { CatalogSidebar, CatalogFilterState } from '@/components/CatalogSidebar';
 import { getLibraryBooks } from '@/lib/githubLibrary';
+import { extractYear } from '@/lib/typography';
 
 export default function LibraryCatalogPage() {
   const [books, setBooks] = useState<BookMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Catalog Sidebar drawer state & filter
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [filter, setFilter] = useState<CatalogFilterState>({ type: 'all' });
 
   // Selected book for transformed view
   const [selectedBook, setSelectedBook] = useState<BookMetadata | null>(null);
 
-  // Load books catalog directly (compatible with GitHub Pages static export)
+  // Load books catalog directly
   const fetchLibrary = useCallback(async (isRefresh = false) => {
     try {
+      const res = await fetch(`/api/library${isRefresh ? '?refresh=true' : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.books) && data.books.length > 0) {
+          setBooks(data.books);
+          setLoading(false);
+          return;
+        }
+      }
       const data = await getLibraryBooks(isRefresh);
       setBooks(data.books || []);
     } catch (err) {
       console.warn('Failed to load books catalog:', err);
+      try {
+        const data = await getLibraryBooks(isRefresh);
+        setBooks(data.books || []);
+      } catch (fallbackErr) {
+        console.warn('Fallback library load failed:', fallbackErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -31,12 +51,29 @@ export default function LibraryCatalogPage() {
 
     async function loadInitial() {
       try {
+        const res = await fetch('/api/library');
+        if (res.ok) {
+          const data = await res.json();
+          if (isSubscribed && data && Array.isArray(data.books) && data.books.length > 0) {
+            setBooks(data.books);
+            setLoading(false);
+            return;
+          }
+        }
         const data = await getLibraryBooks(false);
         if (isSubscribed) {
           setBooks(data.books || []);
         }
       } catch (e) {
         console.warn('Failed to load initial catalog:', e);
+        try {
+          const data = await getLibraryBooks(false);
+          if (isSubscribed) {
+            setBooks(data.books || []);
+          }
+        } catch {
+          // ignore
+        }
       } finally {
         if (isSubscribed) {
           setLoading(false);
@@ -46,7 +83,7 @@ export default function LibraryCatalogPage() {
 
     loadInitial();
 
-    // Auto-refresh every 60s
+    // Auto-refresh periodically
     const timer = setInterval(() => {
       fetchLibrary(false);
     }, 60000);
@@ -57,67 +94,143 @@ export default function LibraryCatalogPage() {
     };
   }, [fetchLibrary]);
 
-  // Books in the same series as selectedBook (excluding the selected book)
+  // Chronologically sorted books (earliest year to latest year)
+  const sortedBooks = useMemo(() => {
+    return [...books].sort((a, b) => {
+      const yearA = extractYear(a.year);
+      const yearB = extractYear(b.year);
+      if (yearA !== yearB) return yearA - yearB;
+      return a.title.localeCompare(b.title, 'ru');
+    });
+  }, [books]);
+
+  // Filtered books based on currentFilter from CatalogSidebar
+  const filteredBooks = useMemo(() => {
+    let list = sortedBooks;
+
+    if (filter.type === 'series' && filter.value) {
+      list = list.filter((b) => (b.series || 'Без серии') === filter.value);
+    } else if (filter.type === 'author' && filter.value) {
+      list = list.filter((b) => b.author === filter.value);
+    }
+
+    if (filter.searchQuery) {
+      const q = filter.searchQuery.toLowerCase().trim();
+      list = list.filter((b) => {
+        return (
+          b.title.toLowerCase().includes(q) ||
+          b.author.toLowerCase().includes(q) ||
+          (b.series && b.series.toLowerCase().includes(q)) ||
+          (b.year && String(b.year).includes(q)) ||
+          b.genres.some((g) => g.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    return list;
+  }, [sortedBooks, filter]);
+
+  // Active series or author title to display in top panel
+  const currentSeriesName = useMemo(() => {
+    if (selectedBook) {
+      return selectedBook.series || selectedBook.author || null;
+    }
+    if (filter.type === 'series' && filter.value) {
+      return filter.value;
+    }
+    if (filter.type === 'author' && filter.value) {
+      return filter.value;
+    }
+    return null;
+  }, [selectedBook, filter]);
+
+  // Books in the same series as selectedBook (excluding the selected book, sorted chronologically)
   const seriesOtherBooks = useMemo(() => {
     if (!selectedBook?.series) return [];
-    return books
+    return sortedBooks
       .filter((b) => b.series === selectedBook.series && b.id !== selectedBook.id)
       .sort((a, b) => {
-        const numA = parseInt(String(a.seriesNumber || '0'), 10);
-        const numB = parseInt(String(b.seriesNumber || '0'), 10);
-        if (!isNaN(numA) && !isNaN(numB) && numA > 0 && numB > 0) {
-          return numA - numB;
-        }
+        const yearA = extractYear(a.year);
+        const yearB = extractYear(b.year);
+        if (yearA !== yearB) return yearA - yearB;
         return a.title.localeCompare(b.title, 'ru');
       });
-  }, [selectedBook, books]);
+  }, [selectedBook, sortedBooks]);
 
-  // Other books by the same author if book has no series
+  // Other books by the same author if book has no series (sorted chronologically)
   const authorOtherBooks = useMemo(() => {
     if (seriesOtherBooks.length > 0 || !selectedBook?.author) return [];
-    return books
+    return sortedBooks
       .filter((b) => b.author === selectedBook.author && b.id !== selectedBook.id)
-      .sort((a, b) => a.title.localeCompare(b.title, 'ru'));
-  }, [selectedBook, books, seriesOtherBooks.length]);
+      .sort((a, b) => {
+        const yearA = extractYear(a.year);
+        const yearB = extractYear(b.year);
+        if (yearA !== yearB) return yearA - yearB;
+        return a.title.localeCompare(b.title, 'ru');
+      });
+  }, [selectedBook, sortedBooks, seriesOtherBooks.length]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#23211f] text-[#fffff0] selection:bg-[#45413e] selection:text-[#fffff0]">
       {/* Main Catalog Body */}
-      <main className="flex-1 w-full h-full overflow-y-auto scrollbar-hide px-4 md:px-8 pt-6 sm:pt-8 md:pt-10 pb-16 relative">
-        <div className="max-w-6xl mx-auto">
-          {/* Subheader: Fixed height and identical margins in both states to ensure zero layout shift */}
-          <div className="h-10 mb-6 pb-2 border-b relative flex items-center justify-between border-[#45413e]/30">
-            {selectedBook ? (
-              <>
+      <main className="flex-1 w-full h-full overflow-y-auto scrollbar-hide px-4 md:px-8 pb-16 relative">
+        <div className="max-w-5xl mx-auto">
+          {/* Header Bar: Left "lscnsk/library[/Series]", Right Back arrow + Catalog emoji buttons */}
+          <div className="h-16 sm:h-20 mb-6 sm:mb-8 border-b flex items-center justify-between border-[#45413e]/30 gap-3">
+            {/* Left corner: Unified lscnsk/library[/series] title */}
+            <div className="flex items-center min-w-0 pr-2 overflow-visible">
+              <h1
+                id="site-title"
+                onClick={() => {
+                  setSelectedBook(null);
+                  setFilter({ type: 'all' });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="text-2xl sm:text-3xl md:text-4xl font-literata font-bold tracking-normal text-[#fffff0] cursor-pointer select-none flex items-baseline gap-1 py-1"
+              >
+                <span className="shrink-0 leading-tight">lscnsk/library</span>
+                {currentSeriesName && (
+                  <span className="text-[#a8a29e] font-normal italic truncate max-w-[180px] sm:max-w-sm md:max-w-md leading-tight">
+                    /{currentSeriesName}
+                  </span>
+                )}
+              </h1>
+            </div>
+
+            {/* Right corner: Back arrow emoji (⬅️) to the left of Catalog emoji button (🗂️) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {(selectedBook || filter.type !== 'all' || filter.searchQuery) && (
                 <button
                   id="back-to-catalog-btn"
                   type="button"
                   onClick={() => {
                     setSelectedBook(null);
+                    setFilter({ type: 'all' });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex items-center gap-1.5 text-xs font-literata lowercase text-[#a8a29e] hover:text-[#fffff0] transition-colors py-1 px-2 rounded-md hover:bg-[#363330] cursor-pointer active:scale-95"
-                  title="back to catalog"
+                  className="p-1 flex items-center justify-center text-3xl sm:text-4xl hover:scale-110 active:scale-95 transition-transform cursor-pointer select-none"
+                  title="Назад"
+                  aria-label="Назад"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>back to catalog</span>
+                  <span className="inline-block emoji leading-none" role="img" aria-label="Назад">
+                    ⬅️
+                  </span>
                 </button>
+              )}
 
-                <span className="lowercase select-none text-center font-literata text-sm md:text-base text-[#a8a29e]/80 tracking-widest truncate max-w-[200px] sm:max-w-md">
-                  {selectedBook.series || 'lscnsk'}
+              <button
+                id="catalog-sidebar-btn"
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-1 flex items-center justify-center text-3xl sm:text-4xl hover:scale-110 active:scale-95 transition-transform cursor-pointer select-none"
+                title="Catalog"
+                aria-label="Catalog"
+              >
+                <span className="inline-block emoji leading-none" role="img" aria-label="Catalog">
+                  🗂️
                 </span>
-
-                <div className="w-32 hidden sm:block" />
-              </>
-            ) : (
-              <>
-                <div className="w-32" />
-                <span className="lowercase select-none text-center font-literata text-sm md:text-base text-[#a8a29e]/80 tracking-widest">
-                  lscnsk
-                </span>
-                <div className="w-32" />
-              </>
-            )}
+              </button>
+            </div>
           </div>
 
           {/* Loading state */}
@@ -125,37 +238,21 @@ export default function LibraryCatalogPage() {
             <div className="text-center py-24 font-literata text-xs tracking-wider text-[#a8a29e] lowercase select-none">
               loading
             </div>
-          ) : books.length === 0 ? (
+          ) : sortedBooks.length === 0 ? (
             /* Empty state matching Cool_Read */
             <div className="text-center py-20 space-y-3 font-literata text-[#a8a29e]">
-              <p className="text-base">Каталог пуст или обновляется</p>
-              <div className="flex justify-center gap-3 items-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => fetchLibrary(true)}
-                  className="text-xs px-3 py-1 rounded-md border border-stone-700 text-[#d6d3d1] hover:bg-stone-800 transition-all cursor-pointer"
-                >
-                  Проверить репозиторий
-                </button>
-              </div>
+              <p className="text-base">Каталог пуст</p>
             </div>
           ) : selectedBook ? (
-            /* Transformed View: Card of selected book at the exact same vertical level + continuous series cards scroll */
+            /* Transformed View: Card of selected book + continuous series cards scroll */
             <div className="space-y-8 animate-fadeIn">
               {/* Primary Open Book Card */}
               <BookCard book={selectedBook} isPrimary />
 
-              {/* Other books in the series rendered as cards in the scroll */}
+              {/* Other books in the series rendered directly under a divider line */}
               {seriesOtherBooks.length > 0 && (
-                <div className="pt-4">
-                  <div className="mb-6 pb-2 flex items-center justify-between border-b border-[#45413e]/30">
-                    <span className="font-literata font-bold text-sm sm:text-base text-[#fffff0]">
-                      Книги в серии «{selectedBook.series}»
-                    </span>
-                    <span className="text-xs font-mono text-[#a8a29e] opacity-60">
-                      {seriesOtherBooks.length + 1} в серии
-                    </span>
-                  </div>
+                <div className="pt-2">
+                  <div className="border-b border-[#45413e]/30 mb-8" />
 
                   <div className="space-y-8">
                     {seriesOtherBooks.map((otherBook) => (
@@ -172,17 +269,10 @@ export default function LibraryCatalogPage() {
                 </div>
               )}
 
-              {/* Other books by the same author if book has no series */}
+              {/* Other books by the same author if book has no series directly under a divider line */}
               {!selectedBook.series && authorOtherBooks.length > 0 && (
-                <div className="pt-4">
-                  <div className="mb-6 pb-2 flex items-center justify-between border-b border-[#45413e]/30">
-                    <span className="font-literata font-bold text-sm sm:text-base text-[#fffff0]">
-                      Другие книги автора {selectedBook.author}
-                    </span>
-                    <span className="text-xs font-mono text-[#a8a29e] opacity-60">
-                      {authorOtherBooks.length} книг
-                    </span>
-                  </div>
+                <div className="pt-2">
+                  <div className="border-b border-[#45413e]/30 mb-8" />
 
                   <div className="space-y-8">
                     {authorOtherBooks.map((otherBook) => (
@@ -200,9 +290,9 @@ export default function LibraryCatalogPage() {
               )}
             </div>
           ) : (
-            /* Main Books Panel: Pure covers grid with NO text under the covers */
+            /* Main Books Panel: Pure covers grid with NO numbers on covers and sorted chronologically */
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-              {books.map((book) => (
+              {filteredBooks.map((book) => (
                 <div
                   key={book.id}
                   id={`book-card-${book.id}`}
@@ -211,10 +301,10 @@ export default function LibraryCatalogPage() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="group cursor-pointer flex flex-col select-none"
-                  title={`${book.title} — ${book.author}`}
+                  title={`${book.title} — ${book.author}${book.year ? ` (${book.year})` : ''}`}
                 >
-                  {/* Pure Book Cover Box (No text captions underneath) */}
-                  <div className="relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md group-hover:border-[#dfc894]/40 transition-colors book-shadow">
+                  {/* Pure Book Cover Box (No numbering, no text captions underneath) */}
+                  <div className="relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md group-hover:border-white/30 transition-colors book-shadow">
                     {book.coverUrl ? (
                       <img
                         src={book.coverUrl}
@@ -225,7 +315,7 @@ export default function LibraryCatalogPage() {
                       />
                     ) : (
                       <div className="h-full flex flex-col justify-between text-[#fffff0] z-10">
-                        <div className="text-[10px] uppercase tracking-widest text-[#dfc894] truncate">
+                        <div className="text-[10px] uppercase tracking-widest text-[#a8a29e] truncate">
                           {book.series || 'lscnsk'}
                         </div>
                         <div className="my-auto text-center px-1">
@@ -244,13 +334,6 @@ export default function LibraryCatalogPage() {
 
                     {/* Spine reflection overlay */}
                     <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
-
-                    {/* Series Number Badge if present */}
-                    {book.seriesNumber && (
-                      <div className="absolute top-2 right-2 z-20 rounded-md bg-black/75 backdrop-blur-xs border border-white/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#dfc894]">
-                        #{book.seriesNumber}
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -258,6 +341,26 @@ export default function LibraryCatalogPage() {
           )}
         </div>
       </main>
+
+      {/* Table of Contents / Catalog Sidebar Drawer */}
+      <CatalogSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        books={sortedBooks}
+        currentFilter={filter}
+        onSelectFilter={(newFilter) => {
+          setFilter(newFilter);
+          setSelectedBook(null);
+        }}
+        onSelectBook={(book) => {
+          setSelectedBook(book);
+          setFilter({ type: 'all' });
+          setIsSidebarOpen(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
     </div>
   );
 }
+
+

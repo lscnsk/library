@@ -3,9 +3,10 @@
  * - Proper Russian guillemets « »
  * - Em-dash (—) instead of hyphens
  * - Non-breaking spaces (&nbsp; or \u00A0) after short prepositions and conjunctions
+ * - Soft hyphens for proper word wrapping
  */
 
-export function formatRussianTypography(text: string): string {
+export function formatTypography(text: string): string {
   if (!text) return '';
 
   let res = text
@@ -25,6 +26,41 @@ export function formatRussianTypography(text: string): string {
   );
 
   return res;
+}
+
+export const formatRussianTypography = formatTypography;
+
+export function extractYear(val?: string | number): number {
+  if (!val) return 999999;
+  const str = String(val);
+  const match = str.match(/\b(\d{4})\b/);
+  if (match) return parseInt(match[1], 10);
+  const num = parseInt(str, 10);
+  return isNaN(num) ? 999999 : num;
+}
+
+export function getApproximatePageCount(book: { pageCount?: number; fileSize?: number; formattedSize?: string }): number {
+  if (book.pageCount && book.pageCount > 0) {
+    return book.pageCount;
+  }
+  if (book.fileSize && book.fileSize > 0) {
+    const bytes = book.fileSize;
+    const estimatedTextBytes = bytes > 1024 * 1024 ? Math.min(bytes * 0.12 + 200 * 1024, 600 * 1024) : bytes * 0.75;
+    return Math.max(1, Math.round(estimatedTextBytes / 1800));
+  }
+  if (book.formattedSize) {
+    const match = book.formattedSize.match(/([\d.]+)\s*([КкMmМмGgГг]?[БbB])/);
+    if (match) {
+      const val = parseFloat(match[1]);
+      const unit = match[2].toUpperCase();
+      let bytes = val;
+      if (unit.startsWith('К') || unit.startsWith('K')) bytes = val * 1024;
+      else if (unit.startsWith('М') || unit.startsWith('M')) bytes = val * 1024 * 1024;
+      const estimatedTextBytes = bytes > 1024 * 1024 ? Math.min(bytes * 0.12 + 200 * 1024, 600 * 1024) : bytes * 0.75;
+      return Math.max(1, Math.round(estimatedTextBytes / 1800));
+    }
+  }
+  return 100;
 }
 
 export function formatBytes(bytes: number): string {

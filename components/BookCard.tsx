@@ -101,7 +101,7 @@ export function BookCard({ book, onSelect }: BookCardProps) {
         <div
           onClick={() => onSelect && onSelect(book)}
           className={`relative aspect-[1/1.45] w-full rounded-lg bg-gradient-to-br from-[#2a2421] to-[#171412] p-3 flex flex-col justify-between border border-white/10 overflow-hidden shadow-md book-shadow ${
-            onSelect ? 'cursor-pointer hover:border-[#dfc894]/40 transition-colors' : ''
+            onSelect ? 'cursor-pointer hover:border-white/30 transition-colors' : ''
           }`}
         >
           {book.coverUrl ? (
@@ -113,7 +113,7 @@ export function BookCard({ book, onSelect }: BookCardProps) {
             />
           ) : (
             <div className="h-full flex flex-col justify-between text-[#fffff0] z-10">
-              <div className="text-[10px] uppercase tracking-widest text-[#dfc894] truncate">
+              <div className="text-[10px] uppercase tracking-widest text-[#a8a29e] truncate">
                 {book.series || 'lscnsk'}
               </div>
               <div className="my-auto text-center px-1">
@@ -132,13 +132,6 @@ export function BookCard({ book, onSelect }: BookCardProps) {
 
           {/* Spine reflection overlay */}
           <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
-
-          {/* Series number badge */}
-          {book.seriesNumber && (
-            <div className="absolute top-2 right-2 z-20 rounded-md bg-black/75 backdrop-blur-xs border border-white/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#dfc894]">
-              #{book.seriesNumber}
-            </div>
-          )}
         </div>
 
         {/* Download button and format/size beneath cover */}
@@ -148,13 +141,13 @@ export function BookCard({ book, onSelect }: BookCardProps) {
             id={`download-btn-${book.id}`}
             onClick={handleDownload}
             disabled={isDownloading}
-            className="w-full py-2 px-3 rounded-lg font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 shadow active:scale-95 bg-[#fffff0] text-[#1c1917] hover:bg-[#e7e5e4] cursor-pointer disabled:opacity-75"
-            title={`Скачать ${book.filename}`}
+            className="w-full py-2 px-3 rounded-lg font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-white text-stone-900 border border-stone-200 hover:bg-stone-100 cursor-pointer disabled:opacity-75"
+            title={`Download ${book.filename}`}
           >
             {isDownloading ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-[#1c1917] border-t-transparent rounded-full animate-spin" />
-                <span>Загрузка...</span>
+                <div className="w-3.5 h-3.5 border-2 border-stone-400 border-t-stone-800 rounded-full animate-spin" />
+                <span>Downloading...</span>
               </>
             ) : (
               <>

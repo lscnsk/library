@@ -197,7 +197,6 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
       let language: string | undefined = undefined;
 
       const isFb2 = file.name.toLowerCase().endsWith('.fb2');
-      let isFileValid = true;
 
       if (isFb2) {
         try {
@@ -230,17 +229,10 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
             if (meta.coverUrl) coverUrl = meta.coverUrl;
             if (meta.pageCount) pageCount = meta.pageCount;
             if (meta.language) language = meta.language;
-          } else {
-            isFileValid = false;
           }
         } catch (e) {
           console.warn(`Could not extract FB2 metadata for ${file.name}:`, e);
         }
-      }
-
-      if (isFb2 && !isFileValid) {
-        console.warn(`File ${file.name} is inaccessible, skipping.`);
-        return null;
       }
 
       const id = `book-${file.sha || file.name.toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-')}`;

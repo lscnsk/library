@@ -71,8 +71,9 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
   };
-  if (process.env.GITHUB_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const token = process.env.NEXT_PUBLIC_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   // Check the dedicated book repository first, then root repository

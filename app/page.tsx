@@ -23,30 +23,11 @@ export default function LibraryCatalogPage() {
   // Load books catalog directly
   const fetchLibrary = useCallback(async (isRefresh = false) => {
     try {
-      const res = await fetch(`/api/library${isRefresh ? '?refresh=true' : ''}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.books)) {
-          setBooks(data.books);
-          if (data.rateLimited) setRateLimited(true);
-          if (data.books.length > 0) {
-            setLoading(false);
-            return;
-          }
-        }
-      }
       const data = await getLibraryBooks(isRefresh);
       setBooks(data.books || []);
       if (data.rateLimited) setRateLimited(true);
     } catch (err) {
       console.warn('Failed to load books catalog:', err);
-      try {
-        const data = await getLibraryBooks(isRefresh);
-        setBooks(data.books || []);
-        if (data.rateLimited) setRateLimited(true);
-      } catch (fallbackErr) {
-        console.warn('Fallback library load failed:', fallbackErr);
-      }
     } finally {
       setLoading(false);
     }
@@ -57,18 +38,6 @@ export default function LibraryCatalogPage() {
 
     async function loadInitial() {
       try {
-        const res = await fetch('/api/library');
-        if (res.ok) {
-          const data = await res.json();
-          if (isSubscribed && data && Array.isArray(data.books)) {
-            setBooks(data.books);
-            if (data.rateLimited) setRateLimited(true);
-            if (data.books.length > 0) {
-              setLoading(false);
-              return;
-            }
-          }
-        }
         const data = await getLibraryBooks(false);
         if (isSubscribed) {
           setBooks(data.books || []);
@@ -76,15 +45,6 @@ export default function LibraryCatalogPage() {
         }
       } catch (e) {
         console.warn('Failed to load initial catalog:', e);
-        try {
-          const data = await getLibraryBooks(false);
-          if (isSubscribed) {
-            setBooks(data.books || []);
-            if (data.rateLimited) setRateLimited(true);
-          }
-        } catch {
-          // ignore
-        }
       } finally {
         if (isSubscribed) {
           setLoading(false);

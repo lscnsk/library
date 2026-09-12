@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getLibraryBooks } from '@/lib/githubLibrary';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const refresh = searchParams.get('refresh') === 'true';
+    let refresh = false;
+    if (request?.url) {
+      try {
+        const { searchParams } = new URL(request.url);
+        refresh = searchParams.get('refresh') === 'true';
+      } catch {
+        // Fallback for static builds
+      }
+    }
     const data = await getLibraryBooks(refresh);
     return NextResponse.json(data);
   } catch (error) {

@@ -50,6 +50,7 @@ export interface BooksResponse {
   genres: string[];
   authors: string[];
   series: string[];
+  rateLimited?: boolean;
 }
 
 export interface BookPreviewChapter {

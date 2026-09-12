@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 
-const isStaticExport = process.env.NEXT_PUBLIC_IS_STATIC_EXPORT === 'true';
+const isStaticExport = process.env.NEXT_PUBLIC_IS_STATIC_EXPORT === 'true' || Boolean(process.env.CI);
 
 // Automatically detect GitHub Pages repository subpath (e.g. /library)
 const repoName = process.env.GITHUB_REPOSITORY

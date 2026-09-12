@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getLibraryBooks } from '@/lib/githubLibrary';
 
+export const revalidate = 60; // cache for 60 seconds
+
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const isRefresh = searchParams.get('refresh') === 'true';
+
   try {
-    let refresh = false;
-    if (request?.url) {
-      try {
-        const { searchParams } = new URL(request.url);
-        refresh = searchParams.get('refresh') === 'true';
-      } catch {
-        // Fallback for static builds
-      }
-    }
-    const data = await getLibraryBooks(refresh);
+    const data = await getLibraryBooks(isRefresh);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('API library error:', error);
-    return NextResponse.json({ books: [], error: 'Failed to fetch library' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch library' }, { status: 500 });
   }
 }

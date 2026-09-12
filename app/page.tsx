@@ -11,6 +11,7 @@ import { extractYear } from '@/lib/typography';
 export default function LibraryCatalogPage() {
   const [books, setBooks] = useState<BookMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rateLimited, setRateLimited] = useState(false);
   
   // Catalog Sidebar drawer state & filter
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -25,19 +26,24 @@ export default function LibraryCatalogPage() {
       const res = await fetch(`/api/library${isRefresh ? '?refresh=true' : ''}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && Array.isArray(data.books) && data.books.length > 0) {
+        if (data && Array.isArray(data.books)) {
           setBooks(data.books);
-          setLoading(false);
-          return;
+          if (data.rateLimited) setRateLimited(true);
+          if (data.books.length > 0) {
+            setLoading(false);
+            return;
+          }
         }
       }
       const data = await getLibraryBooks(isRefresh);
       setBooks(data.books || []);
+      if (data.rateLimited) setRateLimited(true);
     } catch (err) {
       console.warn('Failed to load books catalog:', err);
       try {
         const data = await getLibraryBooks(isRefresh);
         setBooks(data.books || []);
+        if (data.rateLimited) setRateLimited(true);
       } catch (fallbackErr) {
         console.warn('Fallback library load failed:', fallbackErr);
       }
@@ -54,15 +60,19 @@ export default function LibraryCatalogPage() {
         const res = await fetch('/api/library');
         if (res.ok) {
           const data = await res.json();
-          if (isSubscribed && data && Array.isArray(data.books) && data.books.length > 0) {
+          if (isSubscribed && data && Array.isArray(data.books)) {
             setBooks(data.books);
-            setLoading(false);
-            return;
+            if (data.rateLimited) setRateLimited(true);
+            if (data.books.length > 0) {
+              setLoading(false);
+              return;
+            }
           }
         }
         const data = await getLibraryBooks(false);
         if (isSubscribed) {
           setBooks(data.books || []);
+          if (data.rateLimited) setRateLimited(true);
         }
       } catch (e) {
         console.warn('Failed to load initial catalog:', e);
@@ -70,6 +80,7 @@ export default function LibraryCatalogPage() {
           const data = await getLibraryBooks(false);
           if (isSubscribed) {
             setBooks(data.books || []);
+            if (data.rateLimited) setRateLimited(true);
           }
         } catch {
           // ignore
@@ -241,7 +252,7 @@ export default function LibraryCatalogPage() {
           ) : sortedBooks.length === 0 ? (
             /* Empty state matching Cool_Read */
             <div className="text-center py-20 space-y-3 font-literata text-[#a8a29e]">
-              <p className="text-base">Каталог пуст</p>
+              <p className="text-base">{rateLimited ? 'Превышен лимит запросов к GitHub API. Пожалуйста, подождите немного.' : 'Каталог пуст'}</p>
             </div>
           ) : selectedBook ? (
             /* Transformed View: Card of selected book + continuous series cards scroll */

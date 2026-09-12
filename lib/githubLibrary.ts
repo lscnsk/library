@@ -66,6 +66,14 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   let files: RawFileItem[] = [];
   let source: RepoStatus['source'] = 'github-tree';
   let commitInfo: { sha?: string; message?: string; date?: string } = {};
+  let rateLimited = false;
+
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json',
+  };
+  if (process.env.GITHUB_TOKEN) {
+    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
+  }
 
   // Check the dedicated book repository first, then root repository
   const reposToSearch = [GITHUB_REPO_NAME, 'library'];
@@ -75,7 +83,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
     // 1. Fetch latest commit info
     try {
       const commitRes = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/commits?per_page=1`
+        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/commits?per_page=1`,
+        { headers }
       );
       if (commitRes.ok) {
         const commits = await commitRes.json();
@@ -86,6 +95,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
             date: commits[0].commit?.author?.date
           };
         }
+      } else if (commitRes.status === 403) {
+        rateLimited = true;
       }
     } catch {
       // ignore commit fetch error
@@ -94,7 +105,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
     // 2. Fetch full file tree using Git Trees API (recursive)
     try {
       const treeRes = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/git/trees/${GITHUB_BRANCH}?recursive=1`
+        `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/git/trees/${GITHUB_BRANCH}?recursive=1`,
+        { headers }
       );
 
       if (treeRes.ok) {
@@ -123,6 +135,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
             break;
           }
         }
+      } else if (treeRes.status === 403) {
+        rateLimited = true;
       }
     } catch (e) {
       console.warn(`Git Tree API error for ${currentRepo}:`, e);
@@ -132,7 +146,8 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
     if (files.length === 0) {
       try {
         const contentsRes = await fetch(
-          `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/contents?t=${Date.now()}`
+          `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${currentRepo}/contents?t=${Date.now()}`,
+          { headers }
         );
         if (contentsRes.ok) {
           const contents = await contentsRes.json();
@@ -300,11 +315,12 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
     totalSizeFormatted: formatBytes(totalBytes),
     genres: allGenres,
     authors: allAuthors,
-    series: allSeries
+    series: allSeries,
+    rateLimited
   };
 }
 
-function getEmptyLibraryResponse(): BooksResponse {
+function getEmptyLibraryResponse(rateLimited = false): BooksResponse {
   return {
     books: [],
     repo: {
@@ -323,6 +339,7 @@ function getEmptyLibraryResponse(): BooksResponse {
     totalSizeFormatted: '0 B',
     genres: [],
     authors: [],
-    series: []
+    series: [],
+    rateLimited
   };
 }

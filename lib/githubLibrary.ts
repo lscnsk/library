@@ -62,6 +62,96 @@ interface RawFileItem {
   repo?: string;
 }
 
+async function tryFetchJsonCatalog(repoName: string): Promise<BooksResponse | null> {
+  const jsonUrls = [
+    `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${repoName}/${GITHUB_BRANCH}/catalog.json`,
+    `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${repoName}/${GITHUB_BRANCH}/library.json`,
+    `https://cdn.jsdelivr.net/gh/${GITHUB_REPO_OWNER}/${repoName}@${GITHUB_BRANCH}/catalog.json`,
+    `./catalog.json`,
+    `/catalog.json`
+  ];
+
+  for (const url of jsonUrls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const rawBooks = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
+        if (rawBooks.length > 0) {
+          const books: BookMetadata[] = rawBooks.map((b: any, index: number) => {
+            const rawUrl = b.rawUrl || b.downloadUrl || `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${repoName}/${GITHUB_BRANCH}/${encodeURIComponent(b.path || b.filename)}`;
+            const cdnUrl = b.cdnUrl || `https://cdn.jsdelivr.net/gh/${GITHUB_REPO_OWNER}/${repoName}@${GITHUB_BRANCH}/${encodeURIComponent(b.path || b.filename)}`;
+            const githubUrl = b.githubUrl || `https://github.com/${GITHUB_REPO_OWNER}/${repoName}/blob/${GITHUB_BRANCH}/${encodeURIComponent(b.path || b.filename)}`;
+            const fileSize = b.fileSize || 0;
+            return {
+              id: b.id || `book-json-${index}`,
+              filename: b.filename || b.title || 'book',
+              path: b.path || b.filename || '',
+              title: b.title || 'Без названия',
+              author: b.author || 'Автор не указан',
+              authorLastName: b.authorLastName,
+              series: b.series,
+              seriesNumber: b.seriesNumber,
+              year: b.year,
+              genres: Array.isArray(b.genres) ? b.genres : [],
+              annotation: b.annotation,
+              coverUrl: b.coverUrl,
+              format: b.format || 'fb2',
+              fileSize,
+              formattedSize: b.formattedSize || formatBytes(fileSize),
+              downloadUrl: b.downloadUrl || rawUrl,
+              rawUrl,
+              cdnUrl,
+              githubUrl,
+              sha: b.sha,
+              pageCount: b.pageCount,
+              estimatedReadingTime: b.estimatedReadingTime || estimateReadingTime(b.pageCount, fileSize),
+              language: b.language
+            };
+          });
+
+          const allGenres = Array.from(new Set(books.flatMap(b => b.genres))).sort();
+          const allAuthors = Array.from(
+            new Set(books.map(b => b.author).filter(a => a && a !== 'Автор не указан'))
+          ).sort();
+          const allSeries = Array.from(
+            new Set(books.map(b => b.series).filter((s): s is string => Boolean(s)))
+          ).sort();
+          const totalBytes = books.reduce((acc, b) => acc + b.fileSize, 0);
+
+          const isLocal = url.startsWith('./') || url.startsWith('/');
+          const repoStatus: RepoStatus = {
+            owner: GITHUB_REPO_OWNER,
+            repo: repoName,
+            branch: GITHUB_BRANCH,
+            htmlUrl: `https://github.com/${GITHUB_REPO_OWNER}/${repoName}`,
+            uploadUrl: `https://github.com/${GITHUB_REPO_OWNER}/${repoName}/upload/${GITHUB_BRANCH}`,
+            coolReadUrl: COOL_READ_URL,
+            coolReadRepo: COOL_READ_REPO,
+            lastSyncedAt: data.lastSyncedAt || new Date().toISOString(),
+            bookCount: books.length,
+            source: isLocal ? 'local-json' : 'github-json'
+          };
+
+          return {
+            books,
+            repo: repoStatus,
+            cached: false,
+            totalSizeFormatted: formatBytes(totalBytes),
+            genres: allGenres,
+            authors: allAuthors,
+            series: allSeries,
+            rateLimited: false
+          };
+        }
+      }
+    } catch {
+      // ignore and try next JSON source
+    }
+  }
+  return null;
+}
+
 async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   let files: RawFileItem[] = [];
   let source: RepoStatus['source'] = 'github-tree';
@@ -81,6 +171,12 @@ async function fetchBooksFromGitHub(): Promise<BooksResponse> {
   let activeRepo = GITHUB_REPO_NAME;
 
   for (const currentRepo of reposToSearch) {
+    // 0. Try fetching static JSON catalog (bypasses GitHub rate limit completely)
+    const jsonCatalog = await tryFetchJsonCatalog(currentRepo);
+    if (jsonCatalog) {
+      return jsonCatalog;
+    }
+
     // 1. Fetch latest commit info
     try {
       const commitRes = await fetch(

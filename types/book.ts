@@ -36,7 +36,7 @@ export interface RepoStatus {
   coolReadRepo: string;
   lastSyncedAt: string;
   bookCount: number;
-  source: 'github-api' | 'github-tree' | 'jsdelivr' | 'cache';
+  source: 'github-api' | 'github-tree' | 'jsdelivr' | 'cache' | 'github-json' | 'local-json';
   latestCommitSha?: string;
   latestCommitMessage?: string;
   latestCommitDate?: string;

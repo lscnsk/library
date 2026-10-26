@@ -146,7 +146,7 @@ export function BookCard({ book, onSelect }: BookCardProps) {
 
         {/* Read (in the CoolRead web app) and Download beneath the cover */}
         <div className="w-full mt-3 flex flex-col items-center gap-1.5">
-          <div className="w-full grid grid-cols-2 gap-2">
+          <div className="w-full flex flex-col gap-2">
             <a
               id={`read-btn-${book.id}`}
               href={readUrl}

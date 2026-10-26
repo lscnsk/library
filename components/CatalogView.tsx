@@ -59,7 +59,7 @@ export function CatalogView({
     }
   };
 
-  // Automatic micro-typography optimization for catalog annotations (from Cool_Read)
+  // Automatic micro-typography optimization for catalog annotations (from CoolRead)
   useEffect(() => {
     const container = catalogContainerRef.current;
     if (!container) return;
@@ -155,7 +155,7 @@ export function CatalogView({
         </div>
       )}
 
-      {/* Book Articles (Exact Cool_Read Two-Column Layout) */}
+      {/* Book Articles (Exact CoolRead Two-Column Layout) */}
       <div className="space-y-6 sm:space-y-8">
         {books.map((book) => {
           const isDownloading = downloadingIds.has(book.id);

@@ -17,18 +17,18 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'lscnsk/library',
   description:
-    'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки Cool_Read',
+    'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки CoolRead',
   openGraph: {
     title: 'lscnsk/library',
     description:
-      'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки Cool_Read',
+      'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки CoolRead',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'lscnsk/library',
     description:
-      'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки Cool_Read',
+      'Минималистичный каталог цифровой библиотеки lscnsk_library с автообновлением и интеграцией читалки CoolRead',
   },
 };
 

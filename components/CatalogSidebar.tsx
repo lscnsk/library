@@ -159,7 +159,7 @@ export function CatalogSidebar({
         className="w-full max-w-sm sm:max-w-md h-full bg-[#23211f] text-[#fffff0] border-l border-[#45413e] flex flex-col shadow-2xl overflow-hidden font-literata animate-slideInRight"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header - Styled exactly as ChapterSidebar in Cool_Read */}
+        {/* Header - Styled exactly as ChapterSidebar in CoolRead */}
         <div className="h-16 sm:h-20 px-4 sm:px-6 border-b border-[#45413e] flex items-center justify-between shrink-0 bg-[#1c1a18]">
           {isSearchMode ? (
             <div className="flex items-center gap-2 w-full">
@@ -242,7 +242,7 @@ export function CatalogSidebar({
           )}
         </div>
 
-        {/* Navigation Tree & Search Results - Styled as ChapterSidebar in Cool_Read */}
+        {/* Navigation Tree & Search Results - Styled as ChapterSidebar in CoolRead */}
         <div className="flex-1 overflow-y-auto p-3 scrollbar-hide select-none space-y-1">
           {isSearchMode && searchQuery.trim() ? (
             /* SEARCH RESULTS VIEW */

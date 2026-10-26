@@ -31,8 +31,8 @@ export function CoolReadConnectModal({
 
   if (!isOpen) return null;
 
-  const coolReadWebUrl = 'https://lscnsk.github.io/Cool_Read/';
-  const coolReadGithubUrl = 'https://github.com/lscnsk/Cool_Read';
+  const coolReadWebUrl = 'https://lscnsk.github.io/coolread/';
+  const coolReadGithubUrl = 'https://github.com/lscnsk/coolread';
 
   const handleCopyBookUrl = () => {
     if (selectedBook) {
@@ -60,7 +60,7 @@ export function CoolReadConnectModal({
             </div>
             <div>
               <h3 className="font-serif text-base font-bold text-[#1c1b18]">
-                Связка с читалкой Cool_Read
+                Связка с читалкой CoolRead
               </h3>
               <p className="text-[11px] text-[#70685d]">
                 Полноценная экосистема для чтения FB2, EPUB и PDF
@@ -101,14 +101,14 @@ export function CoolReadConnectModal({
             </div>
           )}
 
-          {/* About Cool_Read and the synergy */}
+          {/* About CoolRead and the synergy */}
           <div className="space-y-2.5">
             <h4 className="font-serif text-base font-semibold text-[#1c1b18]">
               Как взаимодействуют каталог и читалка?
             </h4>
             <p className="text-xs leading-relaxed text-[#5c554b]">
               Репозиторий <span className="font-semibold text-[#1c1b18]">lscnsk_library</span> хранит вашу коллекцию электронных книг, а читалка{' '}
-              <span className="font-semibold text-[#b06f2e]">Cool_Read</span> обеспечивает чтение с закладками, офлайн-сохранением и настройками шрифтов.
+              <span className="font-semibold text-[#b06f2e]">CoolRead</span> обеспечивает чтение с закладками, офлайн-сохранением и настройками шрифтов.
             </p>
           </div>
 
@@ -121,7 +121,7 @@ export function CoolReadConnectModal({
               <div className="text-xs">
                 <span className="font-semibold text-[#1c1b18]">Прямая синхронизация каталога:</span>
                 <p className="mt-0.5 text-[#635b51]">
-                  Читалка Cool_Read автоматически обращается к репозиторию lscnsk_library и загружает список доступных книг прямо внутри своего интерфейса.
+                  Читалка CoolRead автоматически обращается к репозиторию lscnsk_library и загружает список доступных книг прямо внутри своего интерфейса.
                 </p>
               </div>
             </div>
@@ -183,7 +183,7 @@ export function CoolReadConnectModal({
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 rounded-lg bg-[#b06f2e] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#975d24] transition-all active:scale-98"
           >
-            <span>Запустить читалку Cool_Read</span>
+            <span>Запустить читалку CoolRead</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>

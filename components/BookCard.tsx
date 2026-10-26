@@ -13,7 +13,7 @@ interface BookCardProps {
 export function BookCard({ book, onSelect }: BookCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Clean description paragraphs matching Cool_Read reader format
+  // Clean description paragraphs matching CoolRead reader format
   const paragraphs = useMemo(() => {
     if (!book.annotation) return [];
     const raw = book.annotation;
@@ -41,9 +41,9 @@ export function BookCard({ book, onSelect }: BookCardProps) {
 
     try {
       const targetUrls = [
-        book.cdnUrl,
         book.rawUrl,
-        book.downloadUrl
+        book.downloadUrl,
+        book.cdnUrl
       ].filter(Boolean) as string[];
 
       let downloaded = false;
@@ -57,7 +57,9 @@ export function BookCard({ book, onSelect }: BookCardProps) {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = blobUrl;
-            a.download = book.filename;
+            // "Автор — Название.fb2" instead of the short name in the repository
+            const nice = [book.author !== 'Автор не указан' ? book.author : '', book.title].filter(Boolean).join(' — ').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+            a.download = nice ? `${nice}.${book.format || 'fb2'}` : book.filename;
             document.body.appendChild(a);
             a.click();
 
@@ -77,7 +79,9 @@ export function BookCard({ book, onSelect }: BookCardProps) {
         const directUrl = book.downloadUrl || book.rawUrl || book.cdnUrl || '';
         const a = document.createElement('a');
         a.href = directUrl;
-        a.download = book.filename;
+        // "Автор — Название.fb2" instead of the short name in the repository
+            const nice = [book.author !== 'Автор не указан' ? book.author : '', book.title].filter(Boolean).join(' — ').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+            a.download = nice ? `${nice}.${book.format || 'fb2'}` : book.filename;
         a.target = '_blank';
         document.body.appendChild(a);
         a.click();

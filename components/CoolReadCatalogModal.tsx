@@ -54,8 +54,8 @@ export function CoolReadCatalogModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const coolReadWebUrl = 'https://lscnsk.github.io/Cool_Read/';
-  const coolReadRepoUrl = 'https://github.com/lscnsk/Cool_Read';
+  const coolReadWebUrl = 'https://lscnsk.github.io/coolread/';
+  const coolReadRepoUrl = 'https://github.com/lscnsk/coolread';
 
   // Chronologically sorted books (earliest year to latest year)
   const chronologicalBooks = useMemo(() => {
@@ -128,7 +128,7 @@ export function CoolReadCatalogModal({
 
   const handleOpenInCoolRead = (e: React.MouseEvent, book: BookMetadata) => {
     e.stopPropagation();
-    // Cool_Read accepts book url or opens reader
+    // CoolRead accepts book url or opens reader
     const directUrl = book.rawUrl || book.cdnUrl || book.downloadUrl;
     const target = `${coolReadWebUrl}#url=${encodeURIComponent(directUrl)}`;
     window.open(target, '_blank', 'noopener,noreferrer');
@@ -155,7 +155,7 @@ export function CoolReadCatalogModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-literata font-bold text-base sm:text-lg text-[#fffff0]">
-                  Каталог Cool_Read
+                  Каталог CoolRead
                 </h3>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#363330] text-[#dfc894]">
                   {books.length} {books.length === 1 ? 'книга' : books.length < 5 ? 'книги' : 'книг'}
@@ -252,7 +252,7 @@ export function CoolReadCatalogModal({
               }`}
             >
               <Sparkles className="w-3 h-3" />
-              <span>Cool_Read</span>
+              <span>CoolRead</span>
             </button>
           </div>
 
@@ -346,10 +346,10 @@ export function CoolReadCatalogModal({
                         type="button"
                         onClick={(e) => handleOpenInCoolRead(e, book)}
                         className="px-2.5 py-1.5 rounded-lg bg-[#dfc894] text-[#1c1917] hover:bg-[#edd8a6] text-xs font-semibold flex items-center gap-1 transition-colors"
-                        title="Открыть в читалке Cool_Read"
+                        title="Открыть в читалке CoolRead"
                       >
                         <Sparkles className="w-3 h-3" />
-                        <span>В Cool_Read</span>
+                        <span>В CoolRead</span>
                       </button>
 
                       <button
@@ -510,7 +510,7 @@ export function CoolReadCatalogModal({
               <div className="p-4 rounded-xl border border-[#dfc894]/30 bg-[#2a2622] space-y-2">
                 <div className="flex items-center gap-2 text-[#dfc894] font-bold text-sm">
                   <Sparkles className="w-4 h-4" />
-                  <span>Читалка Cool_Read</span>
+                  <span>Читалка CoolRead</span>
                 </div>
                 <p className="leading-relaxed">
                   Полноценная PWA-читалка для FB2, EPUB и TXT книг с закладками, офлайн-чтением,
@@ -524,7 +524,7 @@ export function CoolReadCatalogModal({
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-lg bg-[#dfc894] text-[#1c1917] font-bold flex items-center gap-1.5 hover:bg-[#edd8a6] transition-colors"
                   >
-                    <span>Открыть Cool_Read</span>
+                    <span>Открыть CoolRead</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                   <a
@@ -577,7 +577,7 @@ export function CoolReadCatalogModal({
             rel="noopener noreferrer"
             className="text-[#dfc894] hover:underline flex items-center gap-1"
           >
-            <span>Запустить читалку Cool_Read</span>
+            <span>Запустить читалку CoolRead</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

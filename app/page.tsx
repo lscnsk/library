@@ -157,11 +157,11 @@ export default function LibraryCatalogPage() {
                   setFilter({ type: 'all' });
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="text-2xl sm:text-3xl md:text-4xl font-literata font-bold tracking-normal text-[#fffff0] cursor-pointer select-none flex items-baseline gap-1 py-1"
+                className="text-2xl sm:text-3xl md:text-4xl font-literata font-bold tracking-normal text-[#fffff0] cursor-pointer select-none flex items-baseline gap-1 py-1 min-w-0 overflow-hidden"
               >
                 <span className="shrink-0 leading-tight">lscnsk/library</span>
                 {currentSeriesName && (
-                  <span className="text-[#a8a29e] font-normal italic truncate max-w-[180px] sm:max-w-sm md:max-w-md leading-tight">
+                  <span className="text-[#a8a29e] font-normal italic truncate min-w-0 max-w-[180px] sm:max-w-sm md:max-w-md leading-tight">
                     /{currentSeriesName}
                   </span>
                 )}

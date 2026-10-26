@@ -6,8 +6,8 @@ const GITHUB_REPO_OWNER = 'lscnsk';
 const GITHUB_REPO_NAME = 'lscnsk_library';
 const GITHUB_BRANCH = 'main';
 
-const COOL_READ_URL = 'https://lscnsk.github.io/Cool_Read/';
-const COOL_READ_REPO = 'https://github.com/lscnsk/Cool_Read';
+const COOL_READ_URL = 'https://lscnsk.github.io/coolread/';
+const COOL_READ_REPO = 'https://github.com/lscnsk/coolread';
 const GITHUB_REPO_HTML = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}`;
 const GITHUB_UPLOAD_URL = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/upload/${GITHUB_BRANCH}`;
 

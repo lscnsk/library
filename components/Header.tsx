@@ -60,10 +60,10 @@ export function Header({
             type="button"
             onClick={onOpenCoolRead}
             className="group flex items-center gap-1.5 rounded-lg border border-[#e2dcd2] bg-[#f2eee7] px-2.5 py-1.5 text-xs font-medium text-[#3b3630] transition-all hover:border-[#cfc6b8] hover:bg-[#eae3d8] sm:px-3 sm:py-2 sm:text-sm"
-            title="Интеграция с читалкой Cool_Read"
+            title="Интеграция с читалкой CoolRead"
           >
             <Sparkles className="h-3.5 w-3.5 text-[#b06f2e] transition-transform group-hover:scale-110" />
-            <span className="hidden sm:inline">Читалка</span> Cool_Read
+            <span className="hidden sm:inline">Читалка</span> CoolRead
           </button>
 
           {/* Sync Button */}

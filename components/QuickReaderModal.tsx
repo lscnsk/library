@@ -201,10 +201,10 @@ export function QuickReaderModal({
               type="button"
               onClick={() => onOpenCoolRead(book)}
               className="flex items-center gap-1 rounded-lg bg-[#b06f2e] px-2.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#975d24] transition-all"
-              title="Открыть читалку Cool_Read"
+              title="Открыть читалку CoolRead"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">В Cool_Read</span>
+              <span className="hidden md:inline">В CoolRead</span>
             </button>
 
             {/* Close Button */}
@@ -273,7 +273,7 @@ export function QuickReaderModal({
               <div className="mx-auto my-auto max-w-md text-center py-16">
                 <p className="text-sm text-red-500 mb-3">{error}</p>
                 <p className="text-xs opacity-75 mb-5">
-                  Вы можете скачать файл книги напрямую или открыть её в читалке Cool_Read.
+                  Вы можете скачать файл книги напрямую или открыть её в читалке CoolRead.
                 </p>
                 <div className="flex justify-center gap-3">
                   <a
@@ -288,7 +288,7 @@ export function QuickReaderModal({
                     onClick={() => onOpenCoolRead(book)}
                     className="rounded-lg bg-[#b06f2e] px-4 py-2 text-xs font-semibold text-white"
                   >
-                    Открыть в Cool_Read
+                    Открыть в CoolRead
                   </button>
                 </div>
               </div>

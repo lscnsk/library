@@ -346,6 +346,11 @@ export function LibraryCatalog({ initialBookId }: { initialBookId?: string } = {
                       </div>
                     )}
 
+                    {book.badge && (
+                      <span className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/70 text-[#fffff0] text-[10px] font-literata tracking-wide shadow-md pointer-events-none select-none">
+                        {book.badge}
+                      </span>
+                    )}
                     {/* Spine reflection overlay */}
                     <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
                   </div>

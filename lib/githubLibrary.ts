@@ -106,7 +106,8 @@ async function tryFetchJsonCatalog(repoName: string): Promise<BooksResponse | nu
               sha: b.sha,
               pageCount: b.pageCount,
               estimatedReadingTime: b.estimatedReadingTime || estimateReadingTime(b.pageCount, fileSize),
-              language: b.language
+              language: b.language,
+              badge: b.badge
             };
           });
 

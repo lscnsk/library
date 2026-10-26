@@ -24,6 +24,8 @@ export interface BookMetadata {
   pageCount?: number;
   estimatedReadingTime?: string;
   language?: string;
+  /** A short label over the cover, e.g. "На вычитке" */
+  badge?: string;
 }
 
 export interface RepoStatus {

@@ -13,6 +13,7 @@ const basePath =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: { NEXT_PUBLIC_BASE_PATH_RESOLVED: basePath },
   basePath: basePath || undefined,
   assetPrefix: basePath || undefined,
   trailingSlash: true,
@@ -32,7 +33,6 @@ const nextConfig: NextConfig = {
     ],
   },
   output: isStaticExport ? 'export' : 'standalone',
-  transpilePackages: ['motion'],
   webpack: (config, { dev }) => {
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {

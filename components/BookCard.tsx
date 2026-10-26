@@ -10,6 +10,8 @@ interface BookCardProps {
   onSelect?: (book: BookMetadata) => void;
 }
 
+const COOLREAD_URL = 'https://lscnsk.github.io/coolread/';
+
 export function BookCard({ book, onSelect }: BookCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -94,6 +96,10 @@ export function BookCard({ book, onSelect }: BookCardProps) {
     }
   };
 
+  // Books from lscnsk_library open by their id, so CoolRead uses its own catalog entry
+  const fromCatalog = /^[\w-]+$/.test(book.id) && book.path === `${book.id}.${book.format}`;
+  const readUrl = `${COOLREAD_URL}#${fromCatalog ? `book=${encodeURIComponent(book.id)}` : `url=${encodeURIComponent(book.rawUrl || book.downloadUrl)}`}`;
+
   return (
     <article
       id={`book-article-${book.id}`}
@@ -138,28 +144,36 @@ export function BookCard({ book, onSelect }: BookCardProps) {
           <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
         </div>
 
-        {/* Download button and format/size beneath cover */}
+        {/* Read (in the CoolRead web app) and Download beneath the cover */}
         <div className="w-full mt-3 flex flex-col items-center gap-1.5">
-          <button
-            type="button"
-            id={`download-btn-${book.id}`}
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="w-full py-2 px-3 rounded-lg font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-white text-stone-900 border border-stone-200 hover:bg-stone-100 cursor-pointer disabled:opacity-75"
-            title={`Download ${book.filename}`}
-          >
-            {isDownloading ? (
-              <>
+          <div className="w-full grid grid-cols-2 gap-2">
+            <a
+              id={`read-btn-${book.id}`}
+              href={readUrl}
+              target="_blank"
+              rel="noopener"
+              className="py-2 px-2 rounded-lg font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-[#363330] text-[#fffff0] border border-white/10 hover:bg-[#45413e] cursor-pointer"
+              title="Read in CoolRead"
+            >
+              <span className="text-xs leading-none">📖</span>
+              <span>Read</span>
+            </a>
+            <button
+              type="button"
+              id={`download-btn-${book.id}`}
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="py-2 px-2 rounded-lg font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-white text-stone-900 border border-stone-200 hover:bg-stone-100 cursor-pointer disabled:opacity-75"
+              title={`Download ${book.filename}`}
+            >
+              {isDownloading ? (
                 <div className="w-3.5 h-3.5 border-2 border-stone-400 border-t-stone-800 rounded-full animate-spin" />
-                <span>Downloading...</span>
-              </>
-            ) : (
-              <>
+              ) : (
                 <span className="text-xs leading-none">📥</span>
-                <span>Download</span>
-              </>
-            )}
-          </button>
+              )}
+              <span>Download</span>
+            </button>
+          </div>
 
           <div className="text-[10px] sm:text-[10.5px] font-mono whitespace-nowrap text-center w-full px-0.5 tracking-tight text-[#a8a29e] opacity-60">
             {(book.format || 'FB2').toUpperCase()} • {book.formattedSize}
